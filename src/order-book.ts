@@ -33,10 +33,19 @@ export class OrderBook {
     queue.push(order); levels.set(order.price, queue);
   }
 
-  cancel(orderId: string): boolean {
+  reset(): void {
+    this.bids.clear();
+    this.asks.clear();
+    this.lastTimestamp = '';
+    this.lastSequence = 0;
+    this.tradeCount = 0;
+    this.tradedQuantity = 0;
+  }
+
+  cancel(orderId: string, owner?: string): boolean {
     for (const levels of [this.bids, this.asks]) {
       for (const [price, queue] of levels) {
-        const index = queue.findIndex(order => order.id === orderId);
+        const index = queue.findIndex(order => order.id === orderId && (owner === undefined || order.owner === owner));
         if (index >= 0) { queue.splice(index, 1); if (!queue.length) levels.delete(price); return true; }
       }
     }
@@ -81,7 +90,7 @@ export class OrderBook {
     return { bids: this.levels(this.bids, 'buy', depth), asks: this.levels(this.asks, 'sell', depth), sequence: this.lastSequence, timestamp: this.lastTimestamp };
   }
 
-  private seedLevel(side: Side, level: PriceLevel, sequence: number): void { this.add({ id: `seed-${side}-${level.price}`, side, price: level.price, quantity: level.quantity, remaining: level.quantity, sequence }); }
+  private seedLevel(side: Side, level: PriceLevel, sequence: number): void { this.add({ id: `seed-${this.symbol}-${side}-${level.price}`, side, price: level.price, quantity: level.quantity, remaining: level.quantity, sequence }); }
   private levels(map: Map<number, BookOrder[]>, side: Side, depth: number): PriceLevel[] { return [...map.entries()].sort((a, b) => side === 'buy' ? b[0] - a[0] : a[0] - b[0]).slice(0, depth).map(([price, orders]) => ({ price, quantity: +orders.reduce((sum, item) => sum + item.remaining, 0).toFixed(4) })); }
   getStats() { return { tradeCount: this.tradeCount, tradedQuantity: this.tradedQuantity, sequence: this.lastSequence, timestamp: this.lastTimestamp }; }
   queueAhead(side: Side, price: number): number { const queue = (side === 'buy' ? this.bids : this.asks).get(price) ?? []; return queue.reduce((sum, item) => sum + item.remaining, 0); }

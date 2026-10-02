@@ -1,3 +1,4 @@
+export type InstrumentStatus = 'active' | 'replay_ready' | 'suspended';
 export type Side = 'buy' | 'sell';
 export type OrderType = 'limit' | 'market';
 export type EventType = 'snapshot' | 'new_order' | 'cancel_order' | 'trade' | 'quote';
@@ -20,7 +21,7 @@ export type MarketEvent = {
 
 export type PriceLevel = { price: number; quantity: number };
 export type BookOrder = { id: string; side: Side; price: number; quantity: number; remaining: number; sequence: number; owner?: string; type?: OrderType };
-export type Fill = { orderId: string; symbol: string; side: Side; price: number; quantity: number; timestamp: string; liquidity: 'maker' | 'taker'; fee: number; strategyId?: string };
+export type Fill = { orderId: string; symbol: string; tradingDay?: string; currency?: string; side: Side; price: number; quantity: number; timestamp: string; liquidity: 'maker' | 'taker'; fee: number; strategyId?: string };
 export type Analytics = {
   symbol: string;
   timestamp: string;
@@ -37,5 +38,10 @@ export type Analytics = {
   marketSellImpact: Array<{ quantity: number; averagePrice: number | null; slippageBps: number | null; filled: number }>;
   estimatedFillProbability: { buy: number; sell: number };
   liquidityScore: number;
+  tradingDay: string;
+  tickSize: number;
+  lotSize: number;
+  currency: string;
+  instrumentStatus: InstrumentStatus;
 };
 export type RiskDecision = { allowed: boolean; code?: string; message?: string; rule?: string };
