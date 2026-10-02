@@ -26,6 +26,8 @@ npm run dev
 ```text
 GET  /api/health
 GET  /api/instruments
+POST /api/instruments
+PATCH /api/instruments/:symbol
 POST /api/market-data/events
 GET  /api/orderbook/:symbol
 POST /api/replay/sessions
@@ -40,5 +42,18 @@ GET  /api/sandbox/strategies/:strategyId/events
 GET  /api/anomalies
 GET  /api/metrics
 ```
+
+## 品种注册与交易规则
+
+`src/instruments.ts` 统一维护每个品种的 `tradingDay`、`tickSize`、`lotSize`、`currency`、`status`（`active` / `suspended` / `replay_ready`）。行情接入、沙盒下单、订单簿与指标查询共享同一套规则：
+
+- 未注册品种：行情事件与订单被拒绝并记录 `unknown_symbol` 异常；订单簿、指标、重放等查询接口返回 404 `unknown_symbol`，不会创建订单簿。
+- 停牌品种（`suspended`）：事件与订单被拒绝，记录 `instrument_suspended`；查询历史数据仍可用。
+- 非法价格/数量：未对齐 `tickSize`/`lotSize` 或为非正数时拒绝，记录 `invalid_price` / `invalid_quantity`。
+- 跨交易日事件：`tradingDay` 与品种当前交易日不一致时拒绝，记录 `trading_day_mismatch`；可通过 `PATCH /api/instruments/:symbol` 滚动交易日。
+- 重复请求：同品种重复 `sequence` 的事件被拒绝（`duplicate_sequence`）；重复注册幂等返回既有品种；沙盒订单支持 `clientOrderId` 幂等，重复提交返回首个结果并标记 `duplicate: true`。
+- 所有拒绝只记录异常，不会写入事件流或改动任何品种的订单簿。
+
+内置 ALPHA 品种（`2026-09-30`、tickSize 0.01、lotSize 1、USD、`replay_ready`）保持原有行为。运行 `npm run verify` 可执行两品种交错、规则变化与重复请求的完整验证。
 
 所有数据默认存储在内存中，适合作为后端业务原型和后续接入 PostgreSQL、TimescaleDB、Kafka/NATS 的基础。
